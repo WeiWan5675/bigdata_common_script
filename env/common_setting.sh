@@ -31,19 +31,6 @@ export ENV_DIR=$SCRIPT_HOME/env
 export LIB_DIR=$SCRIPT_HOME/lib
 
 
-#echo $SCRIPT_HOME
-#echo $TMP_DIR
-#echo $LOG_DIR
-#echo $TOOLS_DIR
-
-
-
-
-
-
-
-
-
 
 #info日志方法
 logger_info ()
@@ -61,8 +48,8 @@ logger_err ()
 }
 
 #警告日志方法
-exit_warnning()
+logger_warn()
 {
-	echo -e `date +%Y-%m-%d\ %H:%M:%S` : "ERROR [${0##*/}] : ${1}"
+	echo -e `date +%Y-%m-%d\ %H:%M:%S` : "WARN [${0##*/}] : ${1}"
 	return $?
 }

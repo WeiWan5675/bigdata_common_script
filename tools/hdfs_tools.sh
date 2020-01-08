@@ -1,7 +1,6 @@
 #!/bin/bash
 
 source $SCRIPT_HOME/env/common_setting.sh
-
 ############################################################
 #
 #       功能描述: hdfs操作脚本
@@ -73,7 +72,9 @@ fi
 
 report()
 {
-hdfs dfsadmin --report
+logger_info "------------------------------------------------------------------------"
+hdfs dfsadmin -report
+logger_info "------------------------------------------------------------------------"
 }
 
 safemode()

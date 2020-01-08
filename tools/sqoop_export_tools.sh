@@ -24,10 +24,15 @@ db_port=`echo $db_res | awk -F "[ ]" '{print $6}'`
 
 fields_split_by=","
 lines_split_by="\n"
-null_str="\\N"
+null_str=""
+staging_table_suffix="_tmp"
+map_num=1
+
+bindir=$TMP_DIR/sqoop/export
+outdir=$TMP_DIR/sqoop/export
 
 #全量导出
-export_all ()
+export_all_file ()
 {
 logger_info "全量导出"
 logger_info "传入export_all方法中的参数个数:$#"
@@ -52,10 +57,17 @@ sqoop export \
 --table "${target_table}" \
 --export-dir "${export_data_dir}" \
 --columns "${columns}" \
---input-null-non-string "'${null_str}'" \
---fields-terminated-by "'${fields_split_by}'" \
---input-lines-terminated-by "'${lines_split_by}'"  \
---input-null-string "'${null_str}'"
+--input-null-non-string "${null_str}" \
+--fields-terminated-by "${fields_split_by}" \
+--input-lines-terminated-by "${lines_split_by}"  \
+--input-null-string "${null_str}" \
+--staging-table "${target_table}${staging_table_suffix}" \
+--clear-staging-table \
+--bindir "${bindir}" \
+--outdir "${outdir}" \
+-m $map_num
+
+
 }
 
 
@@ -84,6 +96,7 @@ sqoop export \
 --username "${db_user}" \
 --password "${db_pass}" \
 --table "${target_table}" \
+--hcatalog-database "${source_db}" \
 --hcatalog-table "${source_table}" \
 --hcatalog-partition-keys "${partition_key}" \
 --hcatalog-partition-values "${partition_value}" \
@@ -91,17 +104,68 @@ sqoop export \
 --input-lines-terminated-by "'${lines_split_by}'" \
 --input-null-string "'${null_str}'" \
 --input-null-non-string "'${null_str}'" \
--m 1
+--staging-table "${target_table}${staging_table_suffix}" \
+--clear-staging-table \
+--bindir "${bindir}" \
+--outdir "${outdir}" \
+-m $map_num
+
 }
+
+#================================================================
+#全量导出
+export_all ()
+{
+logger_info "全量导出"
+logger_info "传入export_all方法中的参数个数:$#"
+target_db="$1"
+target_table="$2"
+source_db="$3"
+source_table="$4"
+#columns="$4"
+logger_info "target_db: [$target_db] target_table: [$target_table] source_db: [$source_db] source_table: [$source_table]"
+
+if [ $# -ne 4 ];then
+logger_err "导出失败! 缺少必要参数[target_db][target_table][export_data_dir[columns]!"
+exit 1
+fi
+
+db_url="jdbc:mysql://$db_server:$db_port/$target_db?tinyInt1isBit=false&characterEncoding=UTF-8"
+logger_info "数据库url: "$db_url
+# step2 导出
+sqoop export \
+--connect "${db_url}" \
+--username "${db_user}" \
+--password "${db_pass}" \
+--table "${target_table}" \
+--hcatalog-database "${source_db}" \
+--hcatalog-table "${source_table}" \
+--input-null-non-string "${null_str}" \
+--fields-terminated-by "${fields_split_by}" \
+--input-lines-terminated-by "${lines_split_by}"  \
+--input-null-string "${null_str}" \
+--staging-table "${target_table}${staging_table_suffix}" \
+--clear-staging-table \
+--bindir "${bindir}" \
+--outdir "${outdir}" \
+-m $map_num
+
+
+}
+
+
+
 
 
 case "$1" in
 	"export_all")
-		export_all "$2" "$3" "$3" "$4"
+		export_all "$2" "$3" "$4" "$5"
 	;;
 	"export_incr")
 		export_incr "$2" "$3" "$4" "$5" "$6" "$7"
-
+	;;
+	"export_all_file")
+		export_all_file "$2" "$3" "$4" "$5"
 	;;
 	*)
 	echo "导出方法错误!请传入正确参数"

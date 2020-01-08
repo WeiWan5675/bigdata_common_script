@@ -29,9 +29,18 @@ new_str="$3"
 new_file="$4"
 
 
-if [ $# -lt 4 ];then
-sed -i "s%${old_str}%${new_str}%g" $file 
+if [ -f $file ];then
+	if [ $# -lt 4 ];then
+		sed -i "s%${old_str}%${new_str}%g" $file
+	else
+		sed -e "s%${old_str}%${new_str}%g" $file >> $new_file
+	fi
 else
-sed -e "s%${old_str}%${new_str}%g" $file >> $new_file
+
+res=`echo "$1" | sed "s%${old_str}%${new_str}%g"`
+echo $res
+
 
 fi
+
+exit 0

@@ -1,32 +1,17 @@
 #!/bin/bash
 
-
-echo $SCRIPT_HOME
-
 source $SCRIPT_HOME/env/common_setting.sh
 
-
-logger_info "脚本环境信息"
-#脚本信息
-echo "脚本目录: "$SCRIPT_HOME
-echo "临时目录: "$TMP_DIR
-echo "日志目录: "$LOG_DIR
-echo "工具目录: "$TOOLS_DIR
-echo "配置目录: "$CONF_DIR
-echo "环境目录: "$ENV_DIR
-echo "依赖目录: "$LIB_DIR
-
-#echo ""
-#logger_info "系统环境信息"
-#系统信息
-#echo "System Information:"
-#echo "****************************"
-#echo `head -n 1 /etc/issue`
-#echo `uname -a`
-#echo "JAVA_HOME=$JAVA_HOME"
-#echo "`$JAVA_HOME/bin/java -version`"
-#echo "****************************"
-
+############################################################
+#
+#       功能描述: 测试hive脚本
+#       修改者: 肖振男
+#       修改时间: 2019.1.7
+#       版本: x
+#
+#
+#
+#############################################################
 
 
 #文件sql执行
@@ -47,7 +32,7 @@ echo "依赖目录: "$LIB_DIR
 #$TOOLS_DIR/hive_tools.sh executor_sql $sql3
 
 #truncate表
-$TOOLS_DIR/hive_tools.sh truncate_table test_common_script test_drop
+#$TOOLS_DIR/hive_tools.sh truncate_table test_common_script test_drop
 
 #删除表
 #$TOOLS_DIR/hive_tools.sh drop_table test_common_script "test_drop_table"
