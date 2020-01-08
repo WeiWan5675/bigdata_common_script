@@ -23,43 +23,155 @@ db_pass=`echo $db_res | awk -F "[ ]" '{print $4}'`
 db_server=`echo $db_res | awk -F "[ ]" '{print $5}'`
 db_port=`echo $db_res | awk -F "[ ]" '{print $6}'`
 
-fields_split_by="','"
-lines_split_by="'\t'"
-null_str="'\\N'"
+fields_split_by=","
+lines_split_by="\n"
+null_str=""
+map_num=1
+incremental_mode="append" #TODO 需要注意这里有版本1.46之后问题 包括--hive-import 等参数
+bindir=$TMP_DIR/sqoop/import
+outdir=$TMP_DIR/sqoop/import
 
-incremental_mode="lastmodifiedi"
-
+#全量导入(两边表结构完全一致)
 import_all()
 {
 logger_info "全量导入"
-source_db="$1"
-source_table="$2"
-target_db="$3"
-target_table="$4"
-query_sql="${@:5}"
-
-sqoop_cmd="sqoop import --connect $db_url --username $db_user --password $db_pass --table $source_table --hive-import --hive-table $target_table --query $query_sql --hive-drop-import-delims --incremental $incremental_mode --num-mappers $mapper_num --direct --fields-terminated-by $fields_split_by"
+target_db="$1"
+target_table="$2"
+source_db="$3"
+source_table="$4"
+db_url="jdbc:mysql://$db_server:$db_port/$source_db?tinyInt1isBit=false&characterEncoding=UTF-8"
+logger_info "SqoopImport[全量]任务信息:"
+logger_info "-------------------------------------------------------------------------------"
+logger_info "target_db: [$target_db]"
+logger_info "target_table: [$target_table]"
+logger_info "source_db: [$source_db]"
+logger_info "source_table: [$source_table]"
+sqoop import  \
+--connect "$db_url" \
+--username "$db_user" \
+--password "$db_pass" \
+--table "$source_table" \
+--fields-terminated-by "$fields_split_by" \
+--lines-terminated-by "$lines_split_by" \
+--hive-database "$target_db" \
+--hive-table "$target_table" \
+--hive-import \
+--hive-overwrite \
+--delete-target-dir \
+--bindir "${bindir}" \
+--outdir "${outdir}" \
+-m $map_num
 }
 
-
-
-import_incr()
+#全量导入(执行sql导入)
+import_query()
 {
+target_db="$1"
+target_table="$2"
+source_db="$3"
+source_table="$4"
+query_sql="${@:5}"
+db_url="jdbc:mysql://$db_server:$db_port/$source_db?tinyInt1isBit=false&characterEncoding=UTF-8"
+target_dir="/tmp/hive/$target_table""_`$TOOLS_DIR/date_tools.sh today`"
+query_sql=`echo "$query_sql" | sed 's/;//g'`
+if [[ $query_sql =~ "where" ]]
+then
+    query_sql=$query_sql" and $""CONDITIONS"
+else
+    query_sql=$query_sql" where $""CONDITIONS"
+fi
+logger_info "SqoopImport[执行SQL导入]任务信息: "
+logger_info "----------------------------------------------------------------------------"
+logger_info "SQL: [$query_sql]"
+logger_info "target_db: [$target_db]"
+logger_info "target_table: [$target_table]"
+logger_info "source_db: [$source_db]"
+logger_info "source_table: [$source_table]"
+
+sqoop import  \
+--connect "$db_url" \
+--username "$db_user" \
+--password "$db_pass" \
+--query "$query_sql" \
+--fields-terminated-by "$fields_split_by" \
+--lines-terminated-by "$lines_split_by" \
+--hive-database "$target_db" \
+--hive-table "$target_table" \
+--target-dir "$target_dir" \
+--hive-import \
+--hive-overwrite \
+--delete-target-dir \
+--bindir "${bindir}" \
+--outdir "${outdir}" \
+-m $map_num
+
+
+}
+
+import_incr_job()
+{
+
 logger_info "增量导入"
-source_table="${1}"
-source_db="${2}"
-target_db="${3}"
-target_table="${4}"
+target_db="${1}"
+target_table="${2}"
+source_db="${3}"
+source_table="${4}"
 check_column="${5}"
 last_value="${6}"
-
 db_url="jdbc:mysql://$db_server:$db_port/$source_db?tinyInt1isBit=false&characterEncoding=UTF-8"
+job_flag=0
 
-sqoop_cmd="sqoop import --connect ${db_url} --username ${db_user} --password ${db_pass} --table ${source_table} --hive-import --hive-database ${target_db} --hive-table ${target_table} --fields-terminated-by ${fields_split_by} --lines-terminated-by ${lines_split_by} --hive-drop-import-delims --null-string ${null_str} --null-non-string ${null_str} --incremental ${incremental_mode} --check-column ${check_column} --last-value ${last_value}"
-echo $sqoop_cmd
-$sqoop_cmd
+job_name="$target_db"":$target_table""+++$source_db"":$source_table"
+target_dir="/user/hive/warehouse/$target_db"".db/$target_table"
+logger_info "SqoopImport[增量]任务信息:"
+logger_info "-----------------------------------------------------------------------"
+logger_info "source_db: [$source_db]"
+logger_info "source_table: [$source_table]"
+logger_info "target_db: [$target_db]"
+logger_info "target_table: [$target_table]"
+logger_info "job_name: [$job_name]"
+for job  in `sqoop job --list`
+do
+    if [ "$job" == "${job_name}" ];then
+	logger_info "SqoopJob:[$job_name]已经存在!直接执行"
+        job_flag=1
+    fi
+done
+
+if [ $job_flag == 0 ];then
+logger_info "开始创建SqoopJob,JobName:[$job_name]"
+sqoop job --create "$job_name" \
+-- import \
+--connect "$db_url" \
+--username "$db_user" \
+--password "$db_pass" \
+--target-dir "$target_dir" \
+--table "$source_table" \
+--incremental "$incremental_mode" \
+--check-column "$check_column" \
+--last-value "$last_value" \
+--fields-terminated-by "$fields_split_by" \
+--lines-terminated-by "$lines_split_by" \
+--null-string "$null_str" \
+--null-non-string "$null_str" \
+--hive-drop-import-delims \
+--bindir "${bindir}" \
+--outdir "${outdir}" \
+-m 1
+if [ $? -eq 0 ];then
+job_flag=1
+fi
+fi
+
+if [ $job_flag == 1 ];then
+logger_info "SqoopJob:[$job_name]开始执行!"
+sqoop job --exec $job_name
+else
+logger_info "创建SqoopJob失败,请检查日志"
+fi
+
+
 }
-
 
 
 
@@ -71,12 +183,15 @@ $sqoop_cmd
 
 case "$1" in
 	"import_all")
-		import_all
+		import_all "${2}" "${3}" "${4}" "${5}"
 	;;
-	"import_incr")
-		import_incr "${2}" "${3}" "${4}" "${5}" "${6}" "${7}"
+	"import_incr_job")
+		import_incr_job "${2}" "${3}" "${4}" "${5}" "${6}" "${7}"
+	;;
+	"import_query_all")
+		import_query "${2}" "${3}" "${4}" "${5}" "${@:6}"
 	;;
 	*)
-	logger_warn "请输入正确的参数![import_all|import_incr]"
+	logger_warn "请输入正确的参数![import_all|import_incr_job|import_query]"
 	;;
 esac
