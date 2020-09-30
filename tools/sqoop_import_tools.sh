@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source $SCRIPT_HOME/env/common_setting.sh
+source ${SCRIPT_HOME}/env/common_setting.sh
 
 ############################################################
 #
@@ -23,7 +23,7 @@ db_pass=`echo $db_res | awk -F "[ ]" '{print $4}'`
 db_server=`echo $db_res | awk -F "[ ]" '{print $5}'`
 db_port=`echo $db_res | awk -F "[ ]" '{print $6}'`
 
-fields_split_by=","
+fields_split_by="\001"
 lines_split_by="\n"
 null_str=""
 map_num=1
@@ -39,7 +39,11 @@ target_db="$1"
 target_table="$2"
 source_db="$3"
 source_table="$4"
-db_url="jdbc:mysql://$db_server:$db_port/$source_db?tinyInt1isBit=false&characterEncoding=UTF-8"
+
+logger_info "清空source表: [${target_db}"".""${target_table}]"
+$TOOLS_DIR/hive_tools.sh truncate_table $target_db $target_table
+
+db_url="jdbc:mysql://$db_server:$db_port/$source_db?tinyInt1isBit=false&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull"
 logger_info "SqoopImport[全量]任务信息:"
 logger_info "-------------------------------------------------------------------------------"
 logger_info "target_db: [$target_db]"
@@ -57,9 +61,12 @@ sqoop import  \
 --hive-table "$target_table" \
 --hive-import \
 --hive-overwrite \
+--hive-drop-import-delims \
 --delete-target-dir \
---bindir "${bindir}" \
---outdir "${outdir}" \
+--null-string "$null_str" \
+--null-non-string "$null_str" \
+--bindir "${bindir}/${target_db}_${target_table}" \
+--outdir "${outdir}/${target_db}_${target_table}" \
 -m $map_num
 }
 
@@ -71,7 +78,11 @@ target_table="$2"
 source_db="$3"
 source_table="$4"
 query_sql="${@:5}"
-db_url="jdbc:mysql://$db_server:$db_port/$source_db?tinyInt1isBit=false&characterEncoding=UTF-8"
+
+logger_info "清空source表: [${target_db}"".""${target_table}]"
+$TOOLS_DIR/hive_tools.sh truncate_table $target_db $target_table
+
+db_url="jdbc:mysql://$db_server:$db_port/$source_db?tinyInt1isBit=false&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull"
 target_dir="/tmp/hive/$target_table""_`$TOOLS_DIR/date_tools.sh today`"
 query_sql=`echo "$query_sql" | sed 's/;//g'`
 if [[ $query_sql =~ "where" ]]
@@ -98,11 +109,14 @@ sqoop import  \
 --hive-database "$target_db" \
 --hive-table "$target_table" \
 --target-dir "$target_dir" \
+--null-string "$null_str" \
+--null-non-string "$null_str" \
 --hive-import \
 --hive-overwrite \
+--hive-drop-import-delims \
 --delete-target-dir \
---bindir "${bindir}" \
---outdir "${outdir}" \
+--bindir "${bindir}/${target_db}_${target_table}" \
+--outdir "${outdir}/${target_db}_${target_table}" \
 -m $map_num
 
 
@@ -118,7 +132,11 @@ source_db="${3}"
 source_table="${4}"
 check_column="${5}"
 last_value="${6}"
-db_url="jdbc:mysql://$db_server:$db_port/$source_db?tinyInt1isBit=false&characterEncoding=UTF-8"
+
+logger_info "清空source表: [${target_db}"".""${target_table}]"
+$TOOLS_DIR/hive_tools.sh truncate_table $target_db $target_table
+
+db_url="jdbc:mysql://$db_server:$db_port/$source_db?tinyInt1isBit=false&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull"
 job_flag=0
 
 job_name="$target_db"":$target_table""+++$source_db"":$source_table"
@@ -155,8 +173,8 @@ sqoop job --create "$job_name" \
 --null-string "$null_str" \
 --null-non-string "$null_str" \
 --hive-drop-import-delims \
---bindir "${bindir}" \
---outdir "${outdir}" \
+--bindir "${bindir}/${target_db}_${target_table}" \
+--outdir "${outdir}/${target_db}_${target_table}" \
 -m 1
 if [ $? -eq 0 ];then
 job_flag=1
@@ -174,9 +192,47 @@ fi
 }
 
 
+import_incr()
+{
+logger_info "增量导入"
+target_db="${1}"
+target_table="${2}"
+source_db="${3}"
+source_table="${4}"
+check_column="${5}"
+last_value="${6}"
 
+logger_info "清空source表: [${target_db}"".""${target_table}]"
+$TOOLS_DIR/hive_tools.sh truncate_table $target_db $target_table
 
+db_url="jdbc:mysql://$db_server:$db_port/$source_db?tinyInt1isBit=false&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull"
 
+target_dir="/user/hive/warehouse/$target_db"".db/$target_table"
+logger_info "SqoopImport[增量]任务信息:"
+logger_info "-----------------------------------------------------------------------"
+logger_info "source_db: [$source_db]"
+logger_info "source_table: [$source_table]"
+logger_info "target_db: [$target_db]"
+logger_info "target_table: [$target_table]"
+logger_info "last_value: [$last_value]"
+sqoop import \
+--connect "$db_url" \
+--username "$db_user" \
+--password "$db_pass" \
+--target-dir "$target_dir" \
+--table "$source_table" \
+--incremental "$incremental_mode" \
+--check-column "$check_column" \
+--last-value "$last_value" \
+--fields-terminated-by "$fields_split_by" \
+--lines-terminated-by "$lines_split_by" \
+--null-string "$null_str" \
+--null-non-string "$null_str" \
+--hive-drop-import-delims \
+--bindir "${bindir}/${target_db}_${target_table}" \
+--outdir "${outdir}/${target_db}_${target_table}" \
+-m 1
+}
 
 
 
@@ -188,10 +244,13 @@ case "$1" in
 	"import_incr_job")
 		import_incr_job "${2}" "${3}" "${4}" "${5}" "${6}" "${7}"
 	;;
+	"import_incr")
+		import_incr "${2}" "${3}" "${4}" "${5}" "${6}" "${7}"
+	;;
 	"import_query_all")
 		import_query "${2}" "${3}" "${4}" "${5}" "${@:6}"
 	;;
 	*)
-	logger_warn "请输入正确的参数![import_all|import_incr_job|import_query]"
+	logger_warn "请输入正确的参数![import_all|import_incr_job|import_incr|import_query]"
 	;;
 esac

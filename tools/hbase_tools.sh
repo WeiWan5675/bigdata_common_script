@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source $SCRIPT_HOME/env/common_setting.sh
+source ${SCRIPT_HOME}/env/common_setting.sh
 
 ############################################################
 #

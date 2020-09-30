@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source $SCRIPT_HOME/env/common_setting.sh
+source ${SCRIPT_HOME}/env/common_setting.sh
 ############################################################
 #
 #       功能描述: hive操作工具
@@ -23,14 +23,14 @@ exec_sql_file ()
 sql_file="${1}"
 sql_parameter="${@:2}"
 logger_info "开始执行hiveSQL,SQL文件: [$sql_file]"
-hive_cmd="hive -f $sql_file -hiveconf "
+hive_cmd="hive -f $sql_file --hivevar "
 if [ -n "$sql_parameter" ]; then
     for var_p in `$TOOLS_DIR/split_str.sh $sql_parameter`
     do
-        hive_cmd=$hive_cmd" $var_p -hiveconf"
+        hive_cmd=$hive_cmd" "$var_p" --hivevar"
     done
 fi
-hive_cmd=${hive_cmd%-*}
+hive_cmd=${hive_cmd%--*}
 logger_info "需要执行的hiveSQL: [$hive_cmd]"
 $hive_cmd
 flag_num=$?
@@ -43,10 +43,8 @@ exec_sql ()
 {
 
 hive_sql="${@:1}"
-logger_info "开始执行HiveSQL:[$hive_sql]"
 hive -e "$hive_sql"
 flag_num=$?
-logger_info "执行HiveSQL操作完成"
 return $flag_num
 }
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source $SCRIPT_HOME/env/common_setting.sh
+source ${SCRIPT_HOME}/env/common_setting.sh
 
 ############################################################
 #
@@ -37,7 +37,11 @@ yesterday()
 echo `date -d last-day +"%Y$split%m$split%d"`
 }
 
-
+#两天之前的日期
+anteayer()
+{
+  echo `date -d "2 day ago" +"%Y$split%m$split%d"`
+}
 
 case "$1" in
 	"today")
@@ -48,7 +52,9 @@ case "$1" in
 	;;
 	"tomorrow")
 		next_day
-	
+	;;
+	"anteayer")
+	  anteayer
 	;;
 	*)
 		exit

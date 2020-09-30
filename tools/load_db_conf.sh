@@ -2,7 +2,7 @@
 
 
 
-source $SCRIPT_HOME/env/common_setting.sh
+source ${SCRIPT_HOME}/env/common_setting.sh
 
 ######################################################
 #
@@ -20,7 +20,7 @@ source $SCRIPT_HOME/env/common_setting.sh
 
 #step 1 读取文件
 db_file_name="$1"
-conf_file=$CONF_DIR/db_conf/$db_file_name
+conf_file=$CONF_DIR/$PROJECT_ENV/$db_file_name
 
 #echo "==================开始读取数据库配置信息=================="
 mysql_server=`cat $conf_file | grep db.server | awk -F'=' '{ print $2 }' | sed s/[[:space:]]//g`

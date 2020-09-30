@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source $SCRIPT_HOME/env/common_setting.sh
+source ${SCRIPT_HOME}/env/common_setting.sh
 
 ############################################################
 #
@@ -22,7 +22,7 @@ db_pass=`echo $db_res | awk -F "[ ]" '{print $4}'`
 db_server=`echo $db_res | awk -F "[ ]" '{print $5}'`
 db_port=`echo $db_res | awk -F "[ ]" '{print $6}'`
 
-fields_split_by=","
+fields_split_by="\001"
 lines_split_by="\n"
 null_str=""
 staging_table_suffix="_tmp"
@@ -43,7 +43,7 @@ columns="$4"
 logger_info "target_db: [$target_db] target_table: [$target_table] export_data_dir: [$export_data_dir] columns: [$columns]"
 
 if [ $# -ne 4 ];then
-logger_err "导出失败! 缺少必要参数[target_db][target_table][export_data_dir[columns]!"
+logger_err "导出失败! 缺少必要参数[target_db][target_table][export_data_dir][columns]!"
 exit 1
 fi
 
@@ -63,8 +63,8 @@ sqoop export \
 --input-null-string "${null_str}" \
 --staging-table "${target_table}${staging_table_suffix}" \
 --clear-staging-table \
---bindir "${bindir}" \
---outdir "${outdir}" \
+--bindir "${bindir}/${target_db}_${target_table}" \
+--outdir "${outdir}/${target_db}_${target_table}" \
 -m $map_num
 
 
@@ -106,8 +106,8 @@ sqoop export \
 --input-null-non-string "'${null_str}'" \
 --staging-table "${target_table}${staging_table_suffix}" \
 --clear-staging-table \
---bindir "${bindir}" \
---outdir "${outdir}" \
+--bindir "${bindir}/${target_db}_${target_table}" \
+--outdir "${outdir}/${target_db}_${target_table}" \
 -m $map_num
 
 }
@@ -146,8 +146,8 @@ sqoop export \
 --input-null-string "${null_str}" \
 --staging-table "${target_table}${staging_table_suffix}" \
 --clear-staging-table \
---bindir "${bindir}" \
---outdir "${outdir}" \
+--bindir "${bindir}/${target_db}_${target_table}" \
+--outdir "${outdir}/${target_db}_${target_table}" \
 -m $map_num
 
 

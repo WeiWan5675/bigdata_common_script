@@ -1,10 +1,10 @@
 #!/bin/bash
 
-source $SCRIPT_HOME/env/common_setting.sh
+source ${SCRIPT_HOME}/env/common_setting.sh
 
 ############################################################
 #
-#       功能描述: 
+#       功能描述: 批量删除表
 #       修改者: 
 #       修改时间: 
 #       版本: 
@@ -21,13 +21,21 @@ source $SCRIPT_HOME/env/common_setting.sh
 #echo $LIB_DIR	#依赖目录
 #echo $TMP_DIR	#临时目录
 #echo $LOG_DIR	#日志目录
-
+#echo $BIN_DIR	#执行目录
 #--------------------------------------------------------------------
 
 
-export mysql_conf_file=mysql-test.properties
+tables=""
 
 
-$TOOLS_DIR/sqoop_export_tools.sh export_all target_db target_table /home/hive/warehouse/test.db/my_test/ a,b,c,d
+for table in $tables
+do
 
-$TOOLS_DIR/sqoop_export_tools.sh export_incr target_db target_table source_db source_table day 2019-01-01
+logger_info "删除${table}表"
+#$TOOLS_DIR/hive_tools.sh drop_table easylife_ods $table
+
+done
+
+
+exit
+
